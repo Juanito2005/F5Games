@@ -37,7 +37,7 @@ public class GameMenu {
     private int turnsUntilPowerAttackAvailable;
     private int turnsUntilShieldActive;
     private boolean isShieldActive = false;
-    String specialObjectActived;
+    String specialObjectActived = "";
 
     String color1 = "\033[96m";
     String color1b = "\033[1;96m";
@@ -257,7 +257,7 @@ public class GameMenu {
             aiden.setStrength(aiden.getStrength() + 10);
             characterController.updateCharacter(aiden);
 
-            findSpecialObject(skeleton);
+            findSpecialObject(skeleton, durationInSeconds);
 
             aiden.setScore(aiden.getScore() + timeBonus);
             characterController.updateCharacter(aiden);
@@ -373,7 +373,7 @@ public class GameMenu {
             aiden.setStrength(aiden.getStrength() + 15);
             characterController.updateCharacter(aiden);
 
-            findSpecialObject(ghost);
+            findSpecialObject(ghost, durationInSeconds);
 
             aiden.setScore(aiden.getScore() + timeBonus);
             characterController.updateCharacter(aiden);
@@ -488,7 +488,7 @@ public class GameMenu {
             aiden.setHealth(aiden.getHealth() + (aiden.getHealth() / 2));
             characterController.updateCharacter(aiden);
 
-            findSpecialObject(vampire);
+            findSpecialObject(vampire, durationInSeconds);
 
             aiden.setScore(aiden.getScore() + timeBonus);
             characterController.updateCharacter(aiden);
@@ -646,7 +646,7 @@ public class GameMenu {
     }
 
     private boolean powerfullAttack(Character attacker, Character target) {
-        if (turnsUntilPowerAttackAvailable > 0) {
+        if (turnsUntilPowerAttackAvailable > 2) {
             return false;
         }
 
@@ -663,7 +663,11 @@ public class GameMenu {
 
     private void monsterAttack(Character monster, Character aiden) {
         int damage = monster.getStrength();
-
+        if (specialObjectActived.equals("Capa de invisibilidad")) {
+            System.out.println("Aiden se ha vuelto invisble " + monster.getName() + " no puede atacarle");
+            specialObjectActived = "";
+            return;
+        }
         if (isShieldActive) {
             damage -= 5;
             System.out.printf("%s ataca a Aiden, pero el escudo reduce el daño a %d!\n", monster.getName(), damage);
@@ -676,7 +680,6 @@ public class GameMenu {
             aiden.setHealth(aiden.getHealth() - monster.getStrength());
             characterController.updateCharacter(aiden);
         }
-
         if (isShieldActive) {
             turnsUntilShieldActive--;
 
@@ -856,79 +859,80 @@ public class GameMenu {
         return null;
     }
 
-    public GameObject findSpecialObject(Character monster) {
+    public GameObject findSpecialObject(Character monster, long durationInSeconds) {
 
-        ResponseEntity<List<Backpack>> backpack = backpackController.retrieveObjects();
-        List<Backpack> backpackContents = backpack.getBody();
-        List<GameObject> objects = objectController.getObjects();
-        List<GameObject> specialObjects = objects.stream()
-                .filter(obj -> obj.getSpecial())
-                .collect(Collectors.toList());
+        if (durationInSeconds < 60) {
+            ResponseEntity<List<Backpack>> backpack = backpackController.retrieveObjects();
+            List<Backpack> backpackContents = backpack.getBody();
+            List<GameObject> objects = objectController.getObjects();
+            List<GameObject> specialObjects = objects.stream()
+                    .filter(obj -> obj.getSpecial())
+                    .collect(Collectors.toList());
 
-        if (!specialObjects.isEmpty()) {
-            Random random = new Random();
+            if (!specialObjects.isEmpty()) {
+                Random random = new Random();
 
-            GameObject objectDroped = specialObjects.get(random.nextInt(specialObjects.size()));
+                GameObject objectDroped = specialObjects.get(random.nextInt(specialObjects.size()));
 
-            System.out.println();
-            System.out.println("Enhorabuena! El " + monster.getName() + " te ha dropeado: " + objectDroped.getName());
-            System.out.println();
+                System.out.println();
+                System.out.println("Has completado el nivel en menos de 60 segundos!!");
+                System.out.println("Así que el " + monster.getName() + " te ha dropeado: " + objectDroped.getName() + " que es un objeto especial");
+                System.out.println();
 
-            if (backpackContents.size() >= 3) {
-                System.out.println("La mochila está llena... ");
-                System.out.println("OPCIONES: 1- Reemplazar objeto | 2- No recoger objeto");
+                if (backpackContents.size() >= 3) {
+                    System.out.println("La mochila está llena... ");
+                    System.out.println("OPCIONES: 1- Reemplazar objeto | 2- No recoger objeto");
 
-                int option = scanner.nextInt();
+                    int option = scanner.nextInt();
 
-                if (option == 1) {
-                    System.out.println();
-                    System.out.println("\nObjetos en la mochila:");
+                    if (option == 1) {
+                        System.out.println();
+                        System.out.println("\nObjetos en la mochila:");
 
-                    for (int i = 0; i < backpackContents.size(); i++) {
-                        Backpack item = backpackContents.get(i);
-                        GameObject gameObject = item.getGameObject();
+                        for (int i = 0; i < backpackContents.size(); i++) {
+                            Backpack item = backpackContents.get(i);
+                            GameObject gameObject = item.getGameObject();
 
-                        if (gameObject != null) {
-                            System.out.printf("%d. %s\n", i + 1, gameObject.getName());
-                        } else {
-                            System.out.printf("%d. Objeto sin nombre\n", i + 1);
+                            if (gameObject != null) {
+                                System.out.printf("%d. %s\n", i + 1, gameObject.getName());
+                            } else {
+                                System.out.printf("%d. Objeto sin nombre\n", i + 1);
+                            }
                         }
-                    }
-
-                    System.out.println();
-                    System.out.println(
-                            "Selecciona el objeto que quieres reemplazar (1-" + backpackContents.size() + "):");
-
-                    int replaceOption = scanner.nextInt();
-                    if (replaceOption >= 1 && replaceOption <= backpackContents.size()) {
-
-                        Backpack selectedBackpackItem = backpackContents.get(replaceOption - 1);
-
-                        backpackController.updateObject(selectedBackpackItem.getId(), objectDroped.getId());
 
                         System.out.println();
-                        System.out.println("¡Has reemplazado el objeto en la mochila!");
-                        System.out.println();
+                        System.out.println(
+                                "Selecciona el objeto que quieres reemplazar (1-" + backpackContents.size() + "):");
+
+                        int replaceOption = scanner.nextInt();
+                        if (replaceOption >= 1 && replaceOption <= backpackContents.size()) {
+
+                            Backpack selectedBackpackItem = backpackContents.get(replaceOption - 1);
+
+                            backpackController.updateObject(selectedBackpackItem.getId(), objectDroped.getId());
+
+                            System.out.println();
+                            System.out.println("¡Has reemplazado el objeto en la mochila!");
+                            System.out.println();
+                        } else {
+                            System.out.println();
+                            System.out.println("UPS! Has perdido el objeto...");
+                            System.out.println();
+                            return null;
+                        }
                     } else {
                         System.out.println();
-                        System.out.println("UPS! Has perdido el objeto...");
+                        System.out.println("Ignoras el objeto y decides dejarlo en el suelo");
                         System.out.println();
+
                         return null;
                     }
                 } else {
-                    System.out.println();
-                    System.out.println("Ignoras el objeto y decides dejarlo en el suelo");
-                    System.out.println();
-
-                    return null;
+                    backpackController.addObject(objectDroped.getId());
                 }
-            } else {
-                backpackController.addObject(objectDroped.getId());
+                return objectDroped;
             }
-
-            return objectDroped;
         }
-
         return null;
     }
 
@@ -955,19 +959,19 @@ public class GameMenu {
                 characterController.updateCharacter(aiden);
                 break;
             case "Amuleto mágico":
-                System.out.println("ARANCHA... Esta habilidad esta en desarrollo... (-.-)");
+                System.out.println("Realmente no hace nada pero te queda bien bonito el amuleto :) ");
                 break;
             case "Capa de invisibilidad":
                 specialObjectActived = "Capa de invisibilidad";
-                System.out.println("¿Enserio tu crees que nos dió tiempo a implementar esta habilidad?");
+                System.out.println("Te vuelves inmune al daño en el siguiente ataque");
                 break;
             case "Gafas mágicas":
                 specialObjectActived = "Gafas mágicas";
-                System.out.println("No sirven para nada pero te hacen ver mas guapo :)");
+                System.out.println("Te permiten ver los seres invisibles");
                 break;
             case "Collar de ajos":
                 specialObjectActived = "Collar de ajos";
-                System.out.println("Bueno para cocinar alimentos, lástima que no sirva para el combate...");
+                System.out.println("Efectivo contra monstruos roba-vida");
                 break;
             default:
                 break;
@@ -977,11 +981,22 @@ public class GameMenu {
     }
 
     private boolean ghostInvisivility() {
+        if (specialObjectActived.equals("Gafas mágicas")) {
+            System.out.println("Aiden usó las gafas mágicas así que puede ver los fantasmas");
+            specialObjectActived = "";
+            return false;
+        }
         return Math.random() < 0.5;
     }
 
     private boolean recoverHealth(Character recovered) {
         boolean result = Math.random() < 0.5;
+
+        if (specialObjectActived.equals("Collar de ajos")) {
+            System.out.println("Aiden usó el collar de ajos y " + recovered.getName() + " no puede robarle vida");
+            specialObjectActived = "";
+            return false;
+        }
 
         if (result) {
             System.out.println();
